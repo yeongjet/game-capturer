@@ -13,7 +13,6 @@ Server::Server(const struct sockaddr_in& local_addr) {
         reinterpret_cast<void**>(&adapter)  
     );  
     adapter->CreateOverlappedFile(&adapter_file);  
-
     memset(&adapter_info, 0, sizeof(adapter_info));  
 	adapter_info.InfoVersion = ND_VERSION_2;
 	ULONG adapterInfoSize = sizeof(adapter_info);
