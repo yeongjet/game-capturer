@@ -7,7 +7,7 @@
 Client::Client(const struct sockaddr_in &local_addr)
     : local_addr(local_addr), adapter(nullptr), adapter_file(nullptr), cq(nullptr), listener(nullptr)
 {
-    HRESULT hr = NdOpenAdapter(
+    NdOpenAdapter(
         IID_IND2Adapter,
         reinterpret_cast<const struct sockaddr *>(&local_addr),
         sizeof(local_addr),
@@ -52,7 +52,7 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
         adapter->CreateMemoryRegion(
             IID_IND2MemoryRegion,
             adapter_file,
-            reinterpret_cast<VOID**>(&frame_region));
+            reinterpret_cast<VOID **>(&frame_region));
         size_t buffer_size = window.pixel_count * 3;
         char *buffer = static_cast<char *>(HeapAlloc(GetProcessHeap(), 0, buffer_size));
         HRESULT hr2 = frame_region->Register(
@@ -73,9 +73,9 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
             &window,
             sizeof(window),
             &overlapped);
-        if (hr == ND_PENDING)
+        if (hr3 == ND_PENDING)
         {
-            hr = connector->GetOverlappedResult(&overlapped, TRUE);
+            hr3 = connector->GetOverlappedResult(&overlapped, TRUE);
         }
         printf("connected\n");
         ULONG len = 0;
@@ -83,7 +83,6 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
         char *frame_region_info = static_cast<char *>(malloc(len));
         connector->GetPrivateData(frame_region_info, &len);
         struct RemoteFrameRegion *remote_frame_region = reinterpret_cast<struct RemoteFrameRegion *>(frame_region_info);
-        // 打印 remote_region 内容
         printf("RemoteRegion info: address=%llu, token=%u\n",
                (unsigned long long)remote_frame_region->address,
                remote_frame_region->token);
