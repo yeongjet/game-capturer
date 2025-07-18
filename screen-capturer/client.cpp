@@ -77,7 +77,7 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
         {
             hr = connector->GetOverlappedResult(&overlapped, TRUE);
         }
-        printf("connected");
+        printf("connected\n");
         ULONG len = 0;
         connector->GetPrivateData(nullptr, &len);
         char *frame_region_info = static_cast<char *>(malloc(len));

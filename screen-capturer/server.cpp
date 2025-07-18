@@ -37,7 +37,7 @@ void Server::run() {
 		{
 			hr = listener->GetOverlappedResult(&overlapped, TRUE);
 		}
-		printf("connected");
+		printf("connected\n");
 		ULONG len = 0;
 		connector->GetPrivateData(nullptr, &len);
 		char* window_info = static_cast<char*>(malloc(len));
