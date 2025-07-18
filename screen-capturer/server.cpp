@@ -38,12 +38,13 @@ void Server::run() {
 		{
 			hr = listener->GetOverlappedResult(&overlapped, TRUE);
 		}
+		printf("connected");
 		ULONG len = 0;
 		connector->GetPrivateData(nullptr, &len);
 		char* window_info = static_cast<char*>(malloc(len));
 		connector->GetPrivateData(window_info, &len);
 		struct Window* window = reinterpret_cast<struct Window*>(window_info);
-				printf("Window info: id=%d, title=%s, width=%d, height=%d, pixel_count=%zu\n",
+		printf("Window info: id=%d, title=%s, width=%d, height=%d, pixel_count=%zu\n",
 			window->id,
 			window->title,
 			window->width,
