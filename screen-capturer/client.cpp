@@ -77,6 +77,11 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
         {
             hr3 = connector->GetOverlappedResult(&overlapped, TRUE);
         }
+        if (hr3 != ND_SUCCESS)
+        {
+            printf("Failed to connect: hr3 = 0x%08lX\n", hr3);
+            exit(EXIT_FAILURE);
+        }
         printf("connected\n");
         ULONG len = 0;
         connector->GetPrivateData(nullptr, &len);
