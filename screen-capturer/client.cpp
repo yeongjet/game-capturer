@@ -91,5 +91,10 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
         printf("RemoteRegion info: address=%llu, token=%u\n",
                (unsigned long long)remote_frame_region->address,
                remote_frame_region->token);
+        HRESULT hr4 = connector->CompleteConnect(&overlapped);
+        if (hr4 == ND_PENDING)
+        {
+            hr4 = connector->GetOverlappedResult(&overlapped, TRUE);
+        }
     }
 }
