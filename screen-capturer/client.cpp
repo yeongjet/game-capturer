@@ -5,7 +5,7 @@
 #include <ws2tcpip.h>
 
 Client::Client(const struct sockaddr_in &local_addr)
-    : local_addr(local_addr), adapter(nullptr), adapter_file(nullptr), cq(nullptr), listener(nullptr), adapter_info()
+    : local_addr(local_addr), adapter(nullptr), adapter_file(nullptr), cq(nullptr), listener(nullptr)
 {
     HRESULT hr = NdOpenAdapter(
         IID_IND2Adapter,
@@ -13,9 +13,10 @@ Client::Client(const struct sockaddr_in &local_addr)
         sizeof(local_addr),
         reinterpret_cast<void **>(&adapter));
     adapter->CreateOverlappedFile(&adapter_file);
-    ULONG size = sizeof(adapter_info);
-    memset(&adapter_info, 0, size);
-    adapter->Query(&adapter_info, &size);
+    memset(&adapter_info, 0, sizeof(adapter_info));
+    adapter_info.InfoVersion = ND_VERSION_2;
+    ULONG adapterInfoSize = sizeof(adapter_info);
+    adapter->Query(&adapter_info, &adapterInfoSize);
     adapter->CreateCompletionQueue(IID_IND2CompletionQueue, adapter_file, adapter_info.MaxCompletionQueueDepth, 0, 0, reinterpret_cast<VOID **>(&cq));
 }
 
@@ -51,7 +52,7 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
         adapter->CreateMemoryRegion(
             IID_IND2MemoryRegion,
             adapter_file,
-            reinterpret_cast<VOID **>(&frame_region));
+            reinterpret_cast<VOID**>(&frame_region));
         size_t buffer_size = window.pixel_count * 3;
         char *buffer = static_cast<char *>(HeapAlloc(GetProcessHeap(), 0, buffer_size));
         HRESULT hr2 = frame_region->Register(
