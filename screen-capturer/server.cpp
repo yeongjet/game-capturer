@@ -83,6 +83,10 @@ void Server::run()
 		remote_frame_region = reinterpret_cast<struct RemoteFrameRegion *>(buffer);
 		remote_frame_region->address = reinterpret_cast<uint64_t>(buffer);
 		remote_frame_region->token = frame_region->GetRemoteToken();
+		// 打印 remote_frame_region 内容
+		printf("RemoteFrameRegion: address=%llu, token=%u\n",
+			(unsigned long long)remote_frame_region->address,
+			remote_frame_region->token);
 		HRESULT hr3 = connector->Accept(
 			qp,
 			1,
