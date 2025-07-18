@@ -13,9 +13,11 @@ Server::Server(const struct sockaddr_in& local_addr) {
         reinterpret_cast<void**>(&adapter)  
     );  
     adapter->CreateOverlappedFile(&adapter_file);  
-    ULONG size = sizeof(adapter_info);  
-    memset(&adapter_info, 0, size);  
-    adapter->Query(&adapter_info, &size);  
+
+    memset(&adapter_info, 0, sizeof(adapter_info));  
+	adapter_info.InfoVersion = ND_VERSION_2;
+	ULONG adapterInfoSize = sizeof(adapter_info);
+    adapter->Query(&adapter_info, &adapterInfoSize);  
     adapter->CreateCompletionQueue(IID_IND2CompletionQueue, adapter_file, adapter_info.MaxCompletionQueueDepth, 0, 0, reinterpret_cast<VOID**>(&cq));  
     adapter->CreateListener(IID_IND2Listener, adapter_file, reinterpret_cast<VOID**>(&listener));  
     listener->Bind(reinterpret_cast<const sockaddr*>(&local_addr), sizeof(local_addr));  
