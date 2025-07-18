@@ -5,7 +5,7 @@
 struct Window
 {
     uint8_t id;
-    char title[256];
+    std::string title;
     uint16_t width;
     uint16_t height;
     size_t pixel_count;
