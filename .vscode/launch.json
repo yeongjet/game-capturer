@@ -1,11 +1,29 @@
 {
   "configurations": [
     {
-      "name": "Launch",
+      "name": "Launch Client",
       "type": "cppvsdbg",
       "request": "launch",
       "program": "${workspaceFolder}/target/launcher.exe",
-      "args": [],
+      "args": [
+        "-c",
+        "192.168.1.1:54321"
+      ],
+      "stopAtEntry": false,
+      "cwd": "${fileDirname}",
+      "environment": [],
+      "console": "externalTerminal",
+      "preLaunchTask": "build"
+    },
+    {
+      "name": "Launch Server",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/target/launcher.exe",
+      "args": [
+        "-s",
+        "192.168.1.1:54321"
+      ],
       "stopAtEntry": false,
       "cwd": "${fileDirname}",
       "environment": [],

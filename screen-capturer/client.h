@@ -14,7 +14,7 @@
 #include "remote_frame_region.h"
 
 
-class Server
+class Client
 {
 protected:
     IND2Adapter* adapter;
@@ -22,11 +22,12 @@ protected:
     ND2_ADAPTER_INFO adapter_info = { 0 };
     IND2CompletionQueue* cq;
     IND2Listener* listener;
+    struct sockaddr_in local_addr;
 
 public:
-    Server(const struct sockaddr_in& v4Src);
-    void run();
-    ~Server()
+    Client(const struct sockaddr_in& local_addr);
+    void run(Window* windows, size_t count, sockaddr_in& remote_addr);
+    ~Client()
     {
         //if (m_pBuf != nullptr)
         //{
