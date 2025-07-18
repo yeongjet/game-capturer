@@ -23,7 +23,7 @@ Server::Server(const struct sockaddr_in& local_addr) {
     listener->Listen(0);  
     wchar_t ipString[INET_ADDRSTRLEN];  
     InetNtopW(AF_INET, &(local_addr.sin_addr), ipString, INET_ADDRSTRLEN);  
-    wprintf(L"Server listening on %s:%d", ipString, ntohs(local_addr.sin_port));  
+    wprintf(L"Server listening on %s:%d\n", ipString, ntohs(local_addr.sin_port));  
 }
 
 void Server::run() {
@@ -37,7 +37,7 @@ void Server::run() {
 		{
 			hr = listener->GetOverlappedResult(&overlapped, TRUE);
 		}
-		printf("connected");
+		printf("connected\n");
 		ULONG len = 0;
 		connector->GetPrivateData(nullptr, &len);
 		char* window_info = static_cast<char*>(malloc(len));
