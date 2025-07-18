@@ -92,7 +92,7 @@ void Server::run()
 			1,
 			1,
 			remote_frame_region,
-			sizeof(remote_frame_region),
+			sizeof(*remote_frame_region),
 			&overlapped);
 		if (hr3 == ND_PENDING)
 		{
