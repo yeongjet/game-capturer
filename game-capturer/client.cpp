@@ -63,7 +63,7 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
         HRESULT hr2 = frame_region->Register(
             buffer,
             buffer_size,
-            ND_MR_FLAG_ALLOW_REMOTE_WRITE,
+            ND_MR_FLAG_ALLOW_LOCAL_WRITE,
             &overlapped);
         if (hr2 == ND_PENDING)
         {
@@ -166,6 +166,7 @@ void Client::wait() {
         ND2_RESULT ndRes;
         if (cq->GetResults(&ndRes, 1) == 1)
         {
+            printf("cq->GetResults failed: 0x%08lX\n", ndRes.Status);
             if (ND_SUCCESS != ndRes.Status) {
                 printf("cq->GetResults failed: 0x%08lX\n", ndRes.Status);
                 exit(EXIT_FAILURE);
