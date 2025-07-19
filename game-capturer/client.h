@@ -30,6 +30,7 @@ public:
     Client(const struct sockaddr_in& local_addr);
     void run(Window* windows, size_t count, sockaddr_in& remote_addr);
     void capture_and_send_frame(char *buffer, size_t buffer_size, IND2QueuePair *qp, RemoteFrameRegion *remote_frame_region);
+    void wait();
     ~Client()
     {
         //if (m_pBuf != nullptr)

@@ -157,4 +157,20 @@ void Client::capture_and_send_frame(char *buffer, size_t buffer_size, IND2QueueP
     {
         printf("qp->Write failed: 0x%08lX\n", hr_write);
     }
+    wait();
+}
+
+void Client::wait() {
+    for (;;)
+    {
+        ND2_RESULT ndRes;
+        if (cq->GetResults(&ndRes, 1) == 1)
+        {
+            if (ND_SUCCESS != ndRes.Status) {
+                printf("cq->GetResults failed: 0x%08lX\n", ndRes.Status);
+                exit(EXIT_FAILURE);
+            }
+            break;
+        }
+    };
 }
