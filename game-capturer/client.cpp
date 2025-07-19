@@ -101,12 +101,12 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
         {
             hr4 = connector->GetOverlappedResult(&overlapped, TRUE);
         }
-        capture_and_send_frame(buffer, buffer_size, qp, remote_frame_region);
+        capture_and_send_frame(buffer, buffer_size, qp, frame_region, remote_frame_region);
     }
 }
 
 // 捕获屏幕并发送到server
-void Client::capture_and_send_frame(char *buffer, size_t buffer_size, IND2QueuePair *qp, RemoteFrameRegion *remote_frame_region)
+void Client::capture_and_send_frame(char *buffer, size_t buffer_size, IND2QueuePair *qp, IND2MemoryRegion *frame_region, RemoteFrameRegion *remote_frame_region)
 {
     Microsoft::WRL::ComPtr<ID3D11Texture2D> tex;
     D3D11_TEXTURE2D_DESC desc = {};
@@ -141,17 +141,16 @@ void Client::capture_and_send_frame(char *buffer, size_t buffer_size, IND2QueueP
         }
     }
     context->Unmap(tex.Get(), 0);
-
-    // 保存为BMP图片
-    if (stbi_write_bmp("output_client.bmp", width, height, 3, buffer)) {
-        printf("Frame saved to output_client.bmp\n");
-    } else {
-        printf("无法创建output_client.bmp\n");
-    }
-
+    // // 保存为BMP图片
+    // if (stbi_write_bmp("output_client.bmp", width, height, 3, buffer)) {
+    //     printf("Frame saved to output_client.bmp\n");
+    // } else {
+    //     printf("无法创建output_client.bmp\n");
+    // }
     ND2_SGE sge = {0};
     sge.Buffer = buffer;
     sge.BufferLength = (ULONG)(width * height * 3);
+    sge.MemoryRegionToken = frame_region->GetLocalToken();
     HRESULT hr_write = qp->Write(0, &sge, 1, remote_frame_region->address, remote_frame_region->token, 0);
     if (hr_write != ND_SUCCESS)
     {
@@ -160,14 +159,16 @@ void Client::capture_and_send_frame(char *buffer, size_t buffer_size, IND2QueueP
     wait();
 }
 
-void Client::wait() {
+void Client::wait()
+{
     for (;;)
     {
         ND2_RESULT ndRes;
         if (cq->GetResults(&ndRes, 1) == 1)
         {
             printf("cq->GetResults failed: 0x%08lX\n", ndRes.Status);
-            if (ND_SUCCESS != ndRes.Status) {
+            if (ND_SUCCESS != ndRes.Status)
+            {
                 printf("cq->GetResults failed: 0x%08lX\n", ndRes.Status);
                 exit(EXIT_FAILURE);
             }

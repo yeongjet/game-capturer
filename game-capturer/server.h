@@ -13,32 +13,31 @@
 #include "window.h"
 #include "remote_frame_region.h"
 
-
 class Server
 {
 protected:
-    IND2Adapter* adapter;
+    IND2Adapter *adapter;
     HANDLE adapter_file;
-    ND2_ADAPTER_INFO adapter_info = { 0 };
-    IND2CompletionQueue* cq;
-    IND2Listener* listener;
+    ND2_ADAPTER_INFO adapter_info = {0};
+    IND2CompletionQueue *cq;
+    IND2Listener *listener;
 
 public:
-    Server(const struct sockaddr_in& v4Src);
+    Server(const struct sockaddr_in &v4Src);
     void run();
-    void save_frame(char* buffer, int width, int height);
+    void save_frame(char *buffer, int width, int height);
     ~Server()
     {
-        //if (m_pBuf != nullptr)
+        // if (m_pBuf != nullptr)
         //{
-        //    HeapFree(GetProcessHeap(), 0, m_pBuf);
-        //}
+        //     HeapFree(GetProcessHeap(), 0, m_pBuf);
+        // }
 
-        //if (m_pTmpBuf != nullptr)
+        // if (m_pTmpBuf != nullptr)
         //{
-        //    free(m_pTmpBuf);
-        //}
+        //     free(m_pTmpBuf);
+        // }
     }
-protected:
 
+protected:
 };

@@ -85,8 +85,8 @@ void Server::run()
 		remote_frame_region->token = frame_region->GetRemoteToken();
 		// 打印 remote_frame_region 内容
 		printf("RemoteFrameRegion: address=%llu, token=%u\n",
-			(unsigned long long)remote_frame_region->address,
-			remote_frame_region->token);
+			   (unsigned long long)remote_frame_region->address,
+			   remote_frame_region->token);
 		HRESULT hr3 = connector->Accept(
 			qp,
 			1,
@@ -103,10 +103,13 @@ void Server::run()
 }
 
 // 循环保存buffer为图片
-void Server::save_frame(char* buffer, int width, int height) {
+void Server::save_frame(char *buffer, int width, int height)
+{
 	int frame_id = 0;
-	while (true) {
-		if (stbi_write_bmp("output_server.bmp", width, height, 3, buffer)) {
+	while (true)
+	{
+		if (stbi_write_bmp("output_server.bmp", width, height, 3, buffer))
+		{
 			printf("Frame saved to %s\n", "output_server.bmp");
 		}
 		Sleep(1000); // 约1fps
