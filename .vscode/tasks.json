@@ -5,7 +5,7 @@
                 "executable": "cmd.exe",
                 "args": [
                     "/C",
-                    "\"C:/Program Files/Microsoft Visual Studio/2022/Enterprise/Common7/Tools/VsDevCmd.bat\"",
+                    "\"C:/Program Files/Microsoft Visual Studio/2022/Enterprise/Common7/Tools/VsDevCmd.bat\" -arch=amd64",
                     "&&"
                 ]
             }
@@ -62,17 +62,21 @@
                 "/Fd${workspaceFolder}/target/",
                 "/EHsc",
                 "/nologo",
+                "/IC:/Users/yeongjet/AppData/Roaming/opencv/build/include",
                 "/I${workspaceFolder}/network-direct",
                 "/I${workspaceFolder}/dxgi-capturer",
                 "/Fo${workspaceFolder}/target/",
                 "/Fe${workspaceFolder}/target/launcher.exe",
                 "${workspaceFolder}/game-capturer/*.cpp",
                 "/link",
+                "/MACHINE:X64",
                 "/LIBPATH:${workspaceFolder}/target",
+           //     "/LIBPATH:C:/Users/yeongjet/AppData/Roaming/opencv/build/x64/vc16/lib",
                 "ws2_32.lib",
                 "nd2.lib",
                 "dxgi-capturer.lib",
-                "d3d11.lib"
+                "d3d11.lib",
+               "opencv_world4120.lib"
             ],
             "options": {
                 "cwd": "${fileDirname}"

@@ -3,6 +3,8 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include "stb_image_write.h"
+#include <opencv2/opencv.hpp>
+#include <algorithm>
 
 Server::Server(const struct sockaddr_in &local_addr)
 {
@@ -67,7 +69,7 @@ void Server::run()
 			hr2 = frame_region->GetOverlappedResult(&overlapped, TRUE);
 		}
 		IND2QueuePair *qp;
-		DWORD queueDepth = min(adapter_info.MaxCompletionQueueDepth, adapter_info.MaxReceiveQueueDepth);
+		DWORD queueDepth = std::min(adapter_info.MaxCompletionQueueDepth, adapter_info.MaxReceiveQueueDepth);
 		adapter->CreateQueuePair(
 			IID_IND2QueuePair,
 			cq,
@@ -98,20 +100,20 @@ void Server::run()
 		{
 			hr3 = connector->GetOverlappedResult(&overlapped, TRUE);
 		}
-		save_frame(buffer, window->width, window->height);
+		read_frame(buffer, window->width, window->height);
 	}
 }
 
-// 循环保存buffer为图片
-void Server::save_frame(char *buffer, int width, int height)
+void Server::read_frame(char *buffer, int width, int height)
 {
-	int frame_id = 0;
-	while (true)
-	{
-		if (stbi_write_bmp("output_server.bmp", width, height, 3, buffer))
-		{
-			printf("Frame saved to %s\n", "output_server.bmp");
-		}
-		Sleep(1000); // 约1fps
-	}
+	// cv::namedWindow("Frame", cv::WINDOW_AUTOSIZE);
+	// while (true)
+	// {
+	// 	// buffer 是 RGB 格式，连续内存
+	// 	cv::Mat img(height, width, CV_8UC3, buffer);
+	// 	cv::imshow("Frame", img);
+	// 	int key = cv::waitKey(30); // 30ms刷新一次
+	// 	if (key == 27) break; // 按ESC退出
+	// }
+	// cv::destroyWindow("Frame");
 }
