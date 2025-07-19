@@ -29,6 +29,18 @@
       "environment": [],
       "console": "externalTerminal",
       "preLaunchTask": "build"
+    },
+    {
+      "name": "Launch DXGI Example",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/target/dxgi_capturer.exe",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${fileDirname}",
+      "environment": [],
+      "console": "externalTerminal",
+      "preLaunchTask": "build-dxgi-capturer"
     }
   ]
 }
