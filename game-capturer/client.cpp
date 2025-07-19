@@ -1,10 +1,13 @@
 #define _WIN32_WINNT 0x0600
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+
 #include "client.h"
 #include <d3d11.h>
 #include <dxgi1_2.h>
 #include <wrl/client.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include "stb_image_write.h"
 
 Client::Client(const struct sockaddr_in &local_addr)
     : local_addr(local_addr), adapter(nullptr), adapter_file(nullptr), cq(nullptr), listener(nullptr)
@@ -140,27 +143,7 @@ void Client::capture_and_send_frame(char *buffer, size_t buffer_size, IND2QueueP
     context->Unmap(tex.Get(), 0);
 
     // 保存为BMP图片
-    FILE *fp = fopen("output_client.bmp", "wb");
-    if (fp) {
-        int rowPitch = width * 3;
-        int fileSize = 54 + rowPitch * height;
-        unsigned char bmpFileHeader[14] = {
-            'B','M', fileSize, fileSize>>8, fileSize>>16, fileSize>>24,
-            0,0, 0,0, 54,0,0,0
-        };
-        unsigned char bmpInfoHeader[40] = {
-            40,0,0,0, width, width>>8, width>>16, width>>24,
-            height, height>>8, height>>16, height>>24,
-            1,0, 24,0, 0,0,0,0,
-            rowPitch*height, (rowPitch*height)>>8, (rowPitch*height)>>16, (rowPitch*height)>>24,
-            0,0,0,0, 0,0,0,0, 0,0,0,0
-        };
-        fwrite(bmpFileHeader, 1, 14, fp);
-        fwrite(bmpInfoHeader, 1, 40, fp);
-        for (int y = height - 1; y >= 0; --y) {
-            fwrite((unsigned char*)buffer + y * width * 3, 1, rowPitch, fp);
-        }
-        fclose(fp);
+    if (stbi_write_bmp("output_client.bmp", width, height, 3, buffer)) {
         printf("Frame saved to output_client.bmp\n");
     } else {
         printf("无法创建output_client.bmp\n");
