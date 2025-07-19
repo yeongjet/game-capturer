@@ -101,11 +101,12 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
         {
             hr4 = connector->GetOverlappedResult(&overlapped, TRUE);
         }
-        capture_and_send_frame(buffer, buffer_size, qp, frame_region, remote_frame_region);
+        for(;;) {
+            capture_and_send_frame(buffer, buffer_size, qp, frame_region, remote_frame_region);
+        }
     }
 }
 
-// 捕获屏幕并发送到server
 void Client::capture_and_send_frame(char *buffer, size_t buffer_size, IND2QueuePair *qp, IND2MemoryRegion *frame_region, RemoteFrameRegion *remote_frame_region)
 {
     Microsoft::WRL::ComPtr<ID3D11Texture2D> tex;
@@ -151,12 +152,18 @@ void Client::capture_and_send_frame(char *buffer, size_t buffer_size, IND2QueueP
     sge.Buffer = buffer;
     sge.BufferLength = (ULONG)(width * height * 3);
     sge.MemoryRegionToken = frame_region->GetLocalToken();
+    LARGE_INTEGER freq, t1, t2;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&t1);
     HRESULT hr_write = qp->Write(0, &sge, 1, remote_frame_region->address, remote_frame_region->token, 0);
     if (hr_write != ND_SUCCESS)
     {
         printf("qp->Write failed: 0x%08lX\n", hr_write);
     }
     wait();
+    QueryPerformanceCounter(&t2);
+    double elapsed_ms = (double)(t2.QuadPart - t1.QuadPart) * 1000.0 / freq.QuadPart;
+    printf("Write+wait耗时: %.3f ms\n", elapsed_ms);
 }
 
 void Client::wait()
