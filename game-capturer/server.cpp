@@ -105,17 +105,31 @@ void Server::run()
 	}
 }
 
+// 自定义窗口过程，处理缩放
+LRESULT CALLBACK BufferDisplayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+	if (msg == WM_DESTROY) {
+		PostQuitMessage(0);
+		return 0;
+	}
+	return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
 void Server::read_frame(char *buffer, int width, int height)
 {
 	// 注册窗口类
 	WNDCLASSW wc = {0};
-	wc.lpfnWndProc = DefWindowProcW;
+	wc.lpfnWndProc = BufferDisplayWndProc;
 	wc.hInstance = GetModuleHandleW(NULL);
 	wc.lpszClassName = L"BufferDisplayWindow";
 	RegisterClassW(&wc);
 
+	// 计算窗口外部尺寸，使客户区正好为 width x height
+	RECT rc = {0, 0, width, height};
+	AdjustWindowRectEx(&rc, WS_OVERLAPPEDWINDOW, FALSE, 0);
+	int win_width = rc.right - rc.left;
+	int win_height = rc.bottom - rc.top;
 	HWND hwnd = CreateWindowExW(0, L"BufferDisplayWindow", L"Frame", WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT, width, height, NULL, NULL, GetModuleHandleW(NULL), NULL);
+		CW_USEDEFAULT, CW_USEDEFAULT, win_width, win_height, NULL, NULL, GetModuleHandleW(NULL), NULL);
 	ShowWindow(hwnd, SW_SHOW);
 
 	HDC hdc = GetDC(hwnd);
@@ -128,15 +142,24 @@ void Server::read_frame(char *buffer, int width, int height)
 	bmi.bmiHeader.biCompression = BI_RGB;
 
 	MSG msg;
+	int win_w = width, win_h = height;
 	while (true)
 	{
 		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
 			if (msg.message == WM_QUIT) return;
 			if (msg.message == WM_KEYDOWN && msg.wParam == VK_ESCAPE) return;
+			if (msg.message == WM_SIZE) {
+				win_w = LOWORD(msg.lParam);
+				win_h = HIWORD(msg.lParam);
+			}
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-		SetDIBitsToDevice(hdc, 0, 0, width, height, 0, 0, 0, height, buffer, &bmi, DIB_RGB_COLORS);
+		// 保持宽高不小于1
+		int draw_w = win_w > 0 ? win_w : 1;
+		int draw_h = win_h > 0 ? win_h : 1;
+		// 拉伸显示
+		StretchDIBits(hdc, 0, 0, draw_w, draw_h, 0, 0, width, height, buffer, &bmi, DIB_RGB_COLORS, SRCCOPY);
 	}
 	ReleaseDC(hwnd, hdc);
 	DestroyWindow(hwnd);

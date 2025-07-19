@@ -100,7 +100,10 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
         {
             hr4 = connector->GetOverlappedResult(&overlapped, TRUE);
         }
-        write_frame(buffer, buffer_size, qp, frame_region, remote_frame_region);
+        for (;;)
+        {
+            write_frame(buffer, buffer_size, qp, frame_region, remote_frame_region);
+        }
     }
 }
 
@@ -154,7 +157,7 @@ void Client::write_frame(char *buffer, size_t buffer_size, IND2QueuePair *qp, IN
     wait();
     QueryPerformanceCounter(&t2);
     double elapsed_ms = (double)(t2.QuadPart - t1.QuadPart) * 1000.0 / freq.QuadPart;
-    printf("Write+wait耗时: %.3f ms\n", elapsed_ms);
+    printf("Write: %.3f ms\n", elapsed_ms);
 }
 
 void Client::wait()
@@ -164,7 +167,6 @@ void Client::wait()
         ND2_RESULT ndRes;
         if (cq->GetResults(&ndRes, 1) == 1)
         {
-            printf("cq->GetResults failed: 0x%08lX\n", ndRes.Status);
             if (ND_SUCCESS != ndRes.Status)
             {
                 printf("cq->GetResults failed: 0x%08lX\n", ndRes.Status);
