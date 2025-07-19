@@ -4,7 +4,6 @@
 
 int main(int argc, TCHAR *argv[])
 {
-	printf("hello");
 	bool is_server = false;
 	bool is_client = false;
 	struct sockaddr_in remote_addr = {0};
