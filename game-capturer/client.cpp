@@ -7,7 +7,6 @@
 #include <wrl/client.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include "stb_image_write.h"
 
 Client::Client(const struct sockaddr_in &local_addr)
     : local_addr(local_addr), adapter(nullptr), adapter_file(nullptr), cq(nullptr), listener(nullptr)
@@ -105,7 +104,6 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
     }
 }
 
-// 捕获屏幕并发送到server
 void Client::write_frame(char *buffer, size_t buffer_size, IND2QueuePair *qp, IND2MemoryRegion *frame_region, RemoteFrameRegion *remote_frame_region)
 {
     Microsoft::WRL::ComPtr<ID3D11Texture2D> tex;
@@ -141,12 +139,6 @@ void Client::write_frame(char *buffer, size_t buffer_size, IND2QueuePair *qp, IN
         }
     }
     context->Unmap(tex.Get(), 0);
-    // // 保存为BMP图片
-    // if (stbi_write_bmp("output_client.bmp", width, height, 3, buffer)) {
-    //     printf("Frame saved to output_client.bmp\n");
-    // } else {
-    //     printf("无法创建output_client.bmp\n");
-    // }
     ND2_SGE sge = {0};
     sge.Buffer = buffer;
     sge.BufferLength = (ULONG)(width * height * 3);

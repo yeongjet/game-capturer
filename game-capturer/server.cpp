@@ -4,10 +4,6 @@
 #include "server.h"
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include "stb_image_write.h"
-#include <windows.h>
-#undef min
-#undef max
 #include <algorithm>
 
 Server::Server(const struct sockaddr_in &local_addr)
