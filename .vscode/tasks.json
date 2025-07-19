@@ -56,13 +56,16 @@
                 "/EHsc",
                 "/nologo",
                 "/I${workspaceFolder}/network-direct",
+                "/I${workspaceFolder}/dxgi-capturer",
                 "/Fo${workspaceFolder}/target/",
                 "/Fe${workspaceFolder}/target/launcher.exe",
                 "${workspaceFolder}/game-capturer/*.cpp",
                 "/link",
                 "/LIBPATH:${workspaceFolder}/target",
                 "ws2_32.lib",
-                "nd2.lib"
+                "nd2.lib",
+                "dxgi-capturer.lib",
+                "d3d11.lib"
             ],
             "options": {
                 "cwd": "${fileDirname}"

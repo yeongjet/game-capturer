@@ -1,8 +1,10 @@
 #define _WIN32_WINNT 0x0600
 #include "server.h"
-
 #include <winsock2.h>
 #include <ws2tcpip.h>
+
+// 循环保存buffer为图片
+
 
 Server::Server(const struct sockaddr_in &local_addr)
 {
@@ -98,5 +100,38 @@ void Server::run()
 		{
 			hr3 = connector->GetOverlappedResult(&overlapped, TRUE);
 		}
+		save_frame(buffer, window->width, window->height);
+	}
+}
+
+// 循环保存buffer为图片
+void Server::save_frame(char* buffer, int width, int height) {
+	int rowPitch = width * 3;
+	while (true) {
+		FILE *fp = fopen("output_server.bmp", "wb");
+		if (!fp) {
+			printf("无法创建output_server.bmp\n");
+			break;
+		}
+		int fileSize = 54 + rowPitch * height;
+		unsigned char bmpFileHeader[14] = {
+			'B','M', fileSize, fileSize>>8, fileSize>>16, fileSize>>24,
+			0,0, 0,0, 54,0,0,0
+		};
+		unsigned char bmpInfoHeader[40] = {
+			40,0,0,0, width, width>>8, width>>16, width>>24,
+			height, height>>8, height>>16, height>>24,
+			1,0, 24,0, 0,0,0,0,
+			rowPitch*height, (rowPitch*height)>>8, (rowPitch*height)>>16, (rowPitch*height)>>24,
+			0,0,0,0, 0,0,0,0, 0,0,0,0
+		};
+		fwrite(bmpFileHeader, 1, 14, fp);
+		fwrite(bmpInfoHeader, 1, 40, fp);
+		for (int y = height - 1; y >= 0; --y) {
+			fwrite((unsigned char*)buffer + y * width * 3, 1, rowPitch, fp);
+		}
+		fclose(fp);
+		printf("Frame saved to output_server.bmp\n");
+		Sleep(1000); // 约30fps
 	}
 }

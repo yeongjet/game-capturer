@@ -1,6 +1,8 @@
 #define _WIN32_WINNT 0x0600
 #include "client.h"
-
+#include <d3d11.h>
+#include <dxgi1_2.h>
+#include <wrl/client.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
@@ -96,5 +98,80 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
         {
             hr4 = connector->GetOverlappedResult(&overlapped, TRUE);
         }
+        capture_and_send_frame(buffer, buffer_size, qp, remote_frame_region);
+    }
+}
+
+// 捕获屏幕并发送到server
+void Client::capture_and_send_frame(char *buffer, size_t buffer_size, IND2QueuePair *qp, RemoteFrameRegion *remote_frame_region)
+{
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> tex;
+    D3D11_TEXTURE2D_DESC desc = {};
+    int cap_ret = capture_frame(nullptr, nullptr, tex, &desc);
+    if (cap_ret != 0)
+    {
+        printf("capture_frame failed: %d\n", cap_ret);
+        exit(EXIT_FAILURE);
+    }
+    Microsoft::WRL::ComPtr<ID3D11Device> device;
+    tex->GetDevice(&device);
+    Microsoft::WRL::ComPtr<ID3D11DeviceContext> context;
+    device->GetImmediateContext(&context);
+    D3D11_MAPPED_SUBRESOURCE mapped = {};
+    HRESULT hr_map = context->Map(tex.Get(), 0, D3D11_MAP_READ, 0, &mapped);
+    if (!SUCCEEDED(hr_map))
+    {
+        printf("context->Map failed\n");
+        exit(EXIT_FAILURE);
+    }
+    int width = desc.Width;
+    int height = desc.Height;
+    for (int y = 0; y < height; ++y)
+    {
+        unsigned char *src = (unsigned char *)mapped.pData + y * mapped.RowPitch;
+        unsigned char *dst = (unsigned char *)buffer + y * width * 3;
+        for (int x = 0; x < width; ++x)
+        {
+            dst[x * 3 + 0] = src[x * 4 + 2];
+            dst[x * 3 + 1] = src[x * 4 + 1];
+            dst[x * 3 + 2] = src[x * 4 + 0];
+        }
+    }
+    context->Unmap(tex.Get(), 0);
+
+    // 保存为BMP图片
+    FILE *fp = fopen("output_client.bmp", "wb");
+    if (fp) {
+        int rowPitch = width * 3;
+        int fileSize = 54 + rowPitch * height;
+        unsigned char bmpFileHeader[14] = {
+            'B','M', fileSize, fileSize>>8, fileSize>>16, fileSize>>24,
+            0,0, 0,0, 54,0,0,0
+        };
+        unsigned char bmpInfoHeader[40] = {
+            40,0,0,0, width, width>>8, width>>16, width>>24,
+            height, height>>8, height>>16, height>>24,
+            1,0, 24,0, 0,0,0,0,
+            rowPitch*height, (rowPitch*height)>>8, (rowPitch*height)>>16, (rowPitch*height)>>24,
+            0,0,0,0, 0,0,0,0, 0,0,0,0
+        };
+        fwrite(bmpFileHeader, 1, 14, fp);
+        fwrite(bmpInfoHeader, 1, 40, fp);
+        for (int y = height - 1; y >= 0; --y) {
+            fwrite((unsigned char*)buffer + y * width * 3, 1, rowPitch, fp);
+        }
+        fclose(fp);
+        printf("Frame saved to output_client.bmp\n");
+    } else {
+        printf("无法创建output_client.bmp\n");
+    }
+
+    ND2_SGE sge = {0};
+    sge.Buffer = buffer;
+    sge.BufferLength = (ULONG)(width * height * 3);
+    HRESULT hr_write = qp->Write(0, &sge, 1, remote_frame_region->address, remote_frame_region->token, 0);
+    if (hr_write != ND_SUCCESS)
+    {
+        printf("qp->Write failed: 0x%08lX\n", hr_write);
     }
 }

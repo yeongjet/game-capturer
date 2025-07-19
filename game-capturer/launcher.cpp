@@ -1,9 +1,7 @@
-// game-capturer.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
 #include <iostream>
 #include "server.h"
 #include "client.h"
+
 int main(int argc, TCHAR *argv[])
 {
 	bool is_server = false;

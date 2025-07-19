@@ -26,6 +26,7 @@ protected:
 public:
     Server(const struct sockaddr_in& v4Src);
     void run();
+    void save_frame(char* buffer, int width, int height);
     ~Server()
     {
         //if (m_pBuf != nullptr)
