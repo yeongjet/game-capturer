@@ -1,9 +1,13 @@
+#define UNICODE
+#define _UNICODE
 #define _WIN32_WINNT 0x0600
 #include "server.h"
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include "stb_image_write.h"
-#include <opencv2/opencv.hpp>
+#include <windows.h>
+#undef min
+#undef max
 #include <algorithm>
 
 Server::Server(const struct sockaddr_in &local_addr)
@@ -68,19 +72,20 @@ void Server::run()
 		{
 			hr2 = frame_region->GetOverlappedResult(&overlapped, TRUE);
 		}
-		IND2QueuePair *qp;
-		DWORD queueDepth = std::min(adapter_info.MaxCompletionQueueDepth, adapter_info.MaxReceiveQueueDepth);
-		adapter->CreateQueuePair(
-			IID_IND2QueuePair,
-			cq,
-			cq,
-			nullptr,
-			queueDepth,
-			queueDepth,
-			1,
-			1,
-			0,
-			reinterpret_cast<VOID **>(&qp));
+	IND2QueuePair *qp;
+	#undef min
+	DWORD queueDepth = std::min(adapter_info.MaxCompletionQueueDepth, adapter_info.MaxReceiveQueueDepth);
+	adapter->CreateQueuePair(
+		IID_IND2QueuePair,
+		cq,
+		cq,
+		nullptr,
+		queueDepth,
+		queueDepth,
+		1,
+		1,
+		0,
+		reinterpret_cast<VOID **>(&qp));
 		struct RemoteFrameRegion *remote_frame_region;
 		remote_frame_region = reinterpret_cast<struct RemoteFrameRegion *>(buffer);
 		remote_frame_region->address = reinterpret_cast<uint64_t>(buffer);
@@ -106,14 +111,37 @@ void Server::run()
 
 void Server::read_frame(char *buffer, int width, int height)
 {
-	// cv::namedWindow("Frame", cv::WINDOW_AUTOSIZE);
-	// while (true)
-	// {
-	// 	// buffer 是 RGB 格式，连续内存
-	// 	cv::Mat img(height, width, CV_8UC3, buffer);
-	// 	cv::imshow("Frame", img);
-	// 	int key = cv::waitKey(30); // 30ms刷新一次
-	// 	if (key == 27) break; // 按ESC退出
-	// }
-	// cv::destroyWindow("Frame");
+	// 注册窗口类
+	WNDCLASSW wc = {0};
+	wc.lpfnWndProc = DefWindowProcW;
+	wc.hInstance = GetModuleHandleW(NULL);
+	wc.lpszClassName = L"BufferDisplayWindow";
+	RegisterClassW(&wc);
+
+	HWND hwnd = CreateWindowExW(0, L"BufferDisplayWindow", L"Frame", WS_OVERLAPPEDWINDOW,
+		CW_USEDEFAULT, CW_USEDEFAULT, width, height, NULL, NULL, GetModuleHandleW(NULL), NULL);
+	ShowWindow(hwnd, SW_SHOW);
+
+	HDC hdc = GetDC(hwnd);
+	BITMAPINFO bmi = {0};
+	bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	bmi.bmiHeader.biWidth = width;
+	bmi.bmiHeader.biHeight = -height; // 负数表示正向
+	bmi.bmiHeader.biPlanes = 1;
+	bmi.bmiHeader.biBitCount = 24;
+	bmi.bmiHeader.biCompression = BI_RGB;
+
+	MSG msg;
+	while (true)
+	{
+		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+			if (msg.message == WM_QUIT) return;
+			if (msg.message == WM_KEYDOWN && msg.wParam == VK_ESCAPE) return;
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+		SetDIBitsToDevice(hdc, 0, 0, width, height, 0, 0, 0, height, buffer, &bmi, DIB_RGB_COLORS);
+	}
+	ReleaseDC(hwnd, hdc);
+	DestroyWindow(hwnd);
 }

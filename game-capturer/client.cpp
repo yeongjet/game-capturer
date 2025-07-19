@@ -101,12 +101,12 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
         {
             hr4 = connector->GetOverlappedResult(&overlapped, TRUE);
         }
-        capture_and_send_frame(buffer, buffer_size, qp, frame_region, remote_frame_region);
+        write_frame(buffer, buffer_size, qp, frame_region, remote_frame_region);
     }
 }
 
 // 捕获屏幕并发送到server
-void Client::capture_and_send_frame(char *buffer, size_t buffer_size, IND2QueuePair *qp, IND2MemoryRegion *frame_region, RemoteFrameRegion *remote_frame_region)
+void Client::write_frame(char *buffer, size_t buffer_size, IND2QueuePair *qp, IND2MemoryRegion *frame_region, RemoteFrameRegion *remote_frame_region)
 {
     Microsoft::WRL::ComPtr<ID3D11Texture2D> tex;
     D3D11_TEXTURE2D_DESC desc = {};
@@ -135,9 +135,9 @@ void Client::capture_and_send_frame(char *buffer, size_t buffer_size, IND2QueueP
         unsigned char *dst = (unsigned char *)buffer + y * width * 3;
         for (int x = 0; x < width; ++x)
         {
-            dst[x * 3 + 0] = src[x * 4 + 2];
+            dst[x * 3 + 2] = src[x * 4 + 2];
             dst[x * 3 + 1] = src[x * 4 + 1];
-            dst[x * 3 + 2] = src[x * 4 + 0];
+            dst[x * 3 + 0] = src[x * 4 + 0];
         }
     }
     context->Unmap(tex.Get(), 0);
