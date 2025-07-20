@@ -37,7 +37,6 @@ int main(int argc, TCHAR *argv[])
 		SIZE_T len = sizeof(local_addr);
 		HRESULT hr = NdResolveAddress((const struct sockaddr *)&remote_addr,
 									  sizeof(remote_addr), (struct sockaddr *)&local_addr, &len);
-		// 创建一个 Window 数组，假设有 1 个窗口，实际可根据需要调整
 		Window windows[1] = {
 			{
 				1,			   // id

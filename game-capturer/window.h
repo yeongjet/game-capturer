@@ -1,11 +1,10 @@
 #pragma once
 #include <cstdint>
-#include <string>
 
 struct Window
 {
     uint8_t id;
-    std::string title;
+    char window_title[35];
     uint16_t width;
     uint16_t height;
 };

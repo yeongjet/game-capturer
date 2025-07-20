@@ -50,7 +50,7 @@ void Server::run()
 			IID_IND2MemoryRegion,
 			adapter_file,
 			reinterpret_cast<VOID **>(&frame_region));
-		size_t buffer_size = channel->window_width * channel->window_height * 3;
+		size_t buffer_size = channel->window.width * channel->window.height * 3;
 		char *buffer = static_cast<char *>(HeapAlloc(GetProcessHeap(), 0, buffer_size));
 		HRESULT hr2 = frame_region->Register(
 			buffer,
@@ -86,7 +86,7 @@ void Server::run()
 			hr3 = connector->GetOverlappedResult(&overlapped, TRUE);
 		}
 
-		std::thread([this, buffer, w = channel->window_width, h = channel->window_height]()
+		std::thread([this, buffer, w = channel->window.width, h = channel->window.height]()
 					{ this->create_window(buffer, w, h); })
 			.detach();
 		while (true)
@@ -139,8 +139,8 @@ void Server::create_window(char *buffer, int width, int height)
 
 void Server::read_frame(char *buffer, IND2QueuePair *qp, UINT32 local_token, Channel *channel)
 {
-	int width = channel->window_width;
-	int height = channel->window_height;
+	int width = channel->window.width;
+	int height = channel->window.height;
 	uint64_t remote_address = channel->remote_address;
 	uint32_t remote_token = channel->remote_token;
 	ND2_SGE sge = {0};

@@ -68,7 +68,8 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
         {
             hr2 = frame_region->GetOverlappedResult(&overlapped, TRUE);
         }
-        struct Channel channel = {frame_region->GetRemoteToken(), reinterpret_cast<uint64_t>(buffer), window.id, window.title, window.width, window.height};
+        struct Channel channel = {frame_region->GetRemoteToken(),
+                                  reinterpret_cast<uint64_t>(buffer), window};
         unsigned long long s = sizeof(channel);
         HRESULT hr3 = connector->Connect(
             qp,
