@@ -62,13 +62,14 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
         HRESULT hr2 = frame_region->Register(
             buffer,
             buffer_size,
-            ND_MR_FLAG_ALLOW_LOCAL_WRITE,
+            ND_MR_FLAG_ALLOW_REMOTE_READ,
             &overlapped);
         if (hr2 == ND_PENDING)
         {
             hr2 = frame_region->GetOverlappedResult(&overlapped, TRUE);
         }
-        struct Channel channel = {{frame_region->GetRemoteToken(), reinterpret_cast<uint64_t>(buffer)}, window};
+        struct Channel channel = {frame_region->GetRemoteToken(), reinterpret_cast<uint64_t>(buffer), window};
+        unsigned long long s = sizeof(channel);
         HRESULT hr3 = connector->Connect(
             qp,
             reinterpret_cast<const sockaddr *>(&remote_addr),

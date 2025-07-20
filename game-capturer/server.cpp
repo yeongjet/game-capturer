@@ -46,8 +46,8 @@ void Server::run()
 		connector->GetPrivateData(channel_info, &len);
 		struct Channel *channel = reinterpret_cast<struct Channel *>(channel_info);
 		printf("Channel info: frame_region.token=%u, frame_region.address=%llu, window.id=%u, window.width=%u, window.height=%u, window.pixel_count=%zu\n",
-			   channel->frame_region.token,
-			   (unsigned long long)channel->frame_region.address,
+			   channel->remote_token,
+			   (unsigned long long)channel->remote_address,
 			   channel->window.id,
 			   channel->window.width,
 			   channel->window.height,
@@ -81,14 +81,6 @@ void Server::run()
 			1,
 			0,
 			reinterpret_cast<VOID **>(&qp));
-		// struct RemoteFrameRegion *remote_frame_region;
-		// remote_frame_region = reinterpret_cast<struct RemoteFrameRegion *>(buffer);
-		// remote_frame_region->address = reinterpret_cast<uint64_t>(buffer);
-		// remote_frame_region->token = frame_region->GetRemoteToken();
-		// // 打印 remote_frame_region 内容
-		// printf("RemoteFrameRegion: address=%llu, token=%u\n",
-		// 	   (unsigned long long)remote_frame_region->address,
-		// 	   remote_frame_region->token);
 		HRESULT hr3 = connector->Accept(
 			qp,
 			1,
@@ -100,7 +92,7 @@ void Server::run()
 		{
 			hr3 = connector->GetOverlappedResult(&overlapped, TRUE);
 		}
-		// 在新线程中创建窗口，避免阻塞主线程
+
 		std::thread([this, buffer, w = channel->window.width, h = channel->window.height]()
 					{ this->create_window(buffer, w, h); })
 			.detach();
@@ -156,8 +148,8 @@ void Server::read_frame(char *buffer, IND2QueuePair *qp, UINT32 local_token, Cha
 {
 	int width = channel->window.width;
 	int height = channel->window.height;
-	uint64_t remote_address = channel->frame_region.address;
-	uint32_t remote_token = channel->frame_region.token;
+	uint64_t remote_address = channel->remote_address;
+	uint32_t remote_token = channel->remote_token;
 	ND2_SGE sge = {0};
 	sge.Buffer = buffer;
 	sge.BufferLength = (ULONG)(width * height * 3);
