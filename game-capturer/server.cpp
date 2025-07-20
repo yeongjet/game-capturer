@@ -85,14 +85,12 @@ void Server::run()
 		{
 			hr3 = connector->GetOverlappedResult(&overlapped, TRUE);
 		}
-
-		std::thread([this, buffer, w = channel->window.width, h = channel->window.height]()
-					{ this->create_window(buffer, w, h); })
-			.detach();
-		while (true)
-		{
-			read_frame(buffer, qp, frame_region->GetLocalToken(), channel);
-		}
+		std::thread([this, buffer, qp, token = frame_region->GetLocalToken(), channel]() {
+			while (true) {
+				this->read_frame(buffer, qp, token, channel);
+			}
+		}).detach();
+		create_window(buffer, channel->window.width, channel->window.height);
 	}
 }
 
