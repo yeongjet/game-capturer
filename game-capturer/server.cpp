@@ -4,6 +4,7 @@
 #include <ws2tcpip.h>
 #include <algorithm>
 #include <thread>
+#include <memory>
 
 Server::Server(const struct sockaddr_in &local_addr)
 {
@@ -51,9 +52,9 @@ void Server::run()
 			adapter_file,
 			reinterpret_cast<VOID **>(&frame_region));
 		size_t buffer_size = channel->window.width * channel->window.height * 3;
-		char *buffer = static_cast<char *>(HeapAlloc(GetProcessHeap(), 0, buffer_size));
+		auto buffer = std::shared_ptr<char[]>(static_cast<char *>(HeapAlloc(GetProcessHeap(), 0, buffer_size)), [](char* p){ if(p) HeapFree(GetProcessHeap(), 0, p); });
 		HRESULT hr2 = frame_region->Register(
-			buffer,
+			buffer.get(),
 			buffer_size,
 			ND_MR_FLAG_ALLOW_REMOTE_WRITE,
 			&overlapped);
@@ -94,12 +95,23 @@ void Server::run()
 	}
 }
 
-void Server::create_window(char *buffer, int width, int height)
+LRESULT CALLBACK BufferDisplayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	WNDCLASSW wc = {0};
-	wc.hInstance = GetModuleHandleW(NULL);
-	wc.lpszClassName = L"BufferDisplayWindow";
-	RegisterClassW(&wc);
+	if (msg == WM_DESTROY)
+	{
+		PostQuitMessage(0);
+		return 0;
+	}
+	return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+void Server::create_window(std::shared_ptr<char[]> buffer, int width, int height)
+{
+   WNDCLASSW wc = {0};
+   wc.lpfnWndProc = BufferDisplayWndProc;
+   wc.hInstance = GetModuleHandleW(NULL);
+   wc.lpszClassName = L"BufferDisplayWindow";
+   RegisterClassW(&wc);
 	// 计算窗口外部尺寸，使客户区正好为 width x height
 	RECT rc = {0, 0, width, height};
 	AdjustWindowRectEx(&rc, WS_OVERLAPPEDWINDOW, FALSE, 0);
@@ -129,29 +141,34 @@ void Server::create_window(char *buffer, int width, int height)
 			DispatchMessage(&msg);
 		}
 		// 直接以原始大小显示
-		StretchDIBits(hdc, 0, 0, width, height, 0, 0, width, height, buffer, &bmi, DIB_RGB_COLORS, SRCCOPY);
+		StretchDIBits(hdc, 0, 0, width, height, 0, 0, width, height, buffer.get(), &bmi, DIB_RGB_COLORS, SRCCOPY);
 	}
 	ReleaseDC(hwnd, hdc);
 	DestroyWindow(hwnd);
 }
 
-void Server::read_frame(char *buffer, IND2QueuePair *qp, UINT32 local_token, Channel *channel)
+void Server::read_frame(std::shared_ptr<char[]> buffer, IND2QueuePair *qp, UINT32 local_token, Channel *channel)
 {
 	int width = channel->window.width;
 	int height = channel->window.height;
 	uint64_t remote_address = channel->remote_address;
 	uint32_t remote_token = channel->remote_token;
 	ND2_SGE sge = {0};
-	sge.Buffer = buffer;
+	sge.Buffer = buffer.get();
 	sge.BufferLength = (ULONG)(width * height * 3);
 	sge.MemoryRegionToken = local_token;
 	LARGE_INTEGER freq, t1, t2;
+	QueryPerformanceFrequency(&freq);
+	QueryPerformanceCounter(&t1);
 	HRESULT hr = qp->Read(0, &sge, 1, remote_address, remote_token, 0);
 	if (hr != ND_SUCCESS)
 	{
 		printf("qp->Read failed: 0x%08lX\n", hr);
 	}
 	wait();
+	QueryPerformanceCounter(&t2);
+	double ms = (t2.QuadPart - t1.QuadPart) * 1000.0 / freq.QuadPart;
+	printf("read_frame耗时: %.3f ms\n", ms);
 }
 
 void Server::wait()
