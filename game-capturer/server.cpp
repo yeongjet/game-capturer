@@ -1,5 +1,3 @@
-#define UNICODE
-#define _UNICODE
 #define _WIN32_WINNT 0x0600
 #include "server.h"
 #include <winsock2.h>
@@ -47,7 +45,6 @@ void Server::run()
 		char *channel_info = static_cast<char *>(malloc(len));
 		connector->GetPrivateData(channel_info, &len);
 		struct Channel *channel = reinterpret_cast<struct Channel *>(channel_info);
-		// 打印 channel 内容
 		printf("Channel info: frame_region.token=%u, frame_region.address=%llu, window.id=%u, window.width=%u, window.height=%u, window.pixel_count=%zu\n",
 			   channel->frame_region.token,
 			   (unsigned long long)channel->frame_region.address,
@@ -55,7 +52,6 @@ void Server::run()
 			   channel->window.width,
 			   channel->window.height,
 			   channel->window.pixel_count);
-
 		IND2MemoryRegion *frame_region;
 		adapter->CreateMemoryRegion(
 			IID_IND2MemoryRegion,
@@ -105,21 +101,22 @@ void Server::run()
 			hr3 = connector->GetOverlappedResult(&overlapped, TRUE);
 		}
 		// 在新线程中创建窗口，避免阻塞主线程
-		std::thread([this, buffer, w = channel->window.width, h = channel->window.height]() {
-			this->create_window(buffer, w, h);
-		}).detach();
-		while(true) {
+		std::thread([this, buffer, w = channel->window.width, h = channel->window.height]()
+					{ this->create_window(buffer, w, h); })
+			.detach();
+		while (true)
+		{
 			read_frame(buffer, qp, frame_region->GetLocalToken(), channel);
 		}
 	}
 }
 
-void Server::create_window(char *buffer, int width, int height) {
+void Server::create_window(char *buffer, int width, int height)
+{
 	WNDCLASSW wc = {0};
 	wc.hInstance = GetModuleHandleW(NULL);
 	wc.lpszClassName = L"BufferDisplayWindow";
 	RegisterClassW(&wc);
-
 	// 计算窗口外部尺寸，使客户区正好为 width x height
 	RECT rc = {0, 0, width, height};
 	AdjustWindowRectEx(&rc, WS_OVERLAPPEDWINDOW, FALSE, 0);
@@ -128,7 +125,6 @@ void Server::create_window(char *buffer, int width, int height) {
 	HWND hwnd = CreateWindowExW(0, L"BufferDisplayWindow", L"Frame", WS_OVERLAPPEDWINDOW,
 								CW_USEDEFAULT, CW_USEDEFAULT, win_width, win_height, NULL, NULL, GetModuleHandleW(NULL), NULL);
 	ShowWindow(hwnd, SW_SHOW);
-
 	HDC hdc = GetDC(hwnd);
 	BITMAPINFO bmi = {0};
 	bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -137,7 +133,6 @@ void Server::create_window(char *buffer, int width, int height) {
 	bmi.bmiHeader.biPlanes = 1;
 	bmi.bmiHeader.biBitCount = 24;
 	bmi.bmiHeader.biCompression = BI_RGB;
-
 	MSG msg;
 	while (true)
 	{
@@ -174,7 +169,6 @@ void Server::read_frame(char *buffer, IND2QueuePair *qp, UINT32 local_token, Cha
 		printf("qp->Read failed: 0x%08lX\n", hr);
 	}
 	wait();
-
 }
 
 void Server::wait()
