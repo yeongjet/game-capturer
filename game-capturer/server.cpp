@@ -5,6 +5,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <algorithm>
+#include <thread>
 
 Server::Server(const struct sockaddr_in &local_addr)
 {
@@ -103,42 +104,18 @@ void Server::run()
 		{
 			hr3 = connector->GetOverlappedResult(&overlapped, TRUE);
 		}
-		read_frame(buffer, qp, frame_region->GetLocalToken(), channel);
+		// 在新线程中创建窗口，避免阻塞主线程
+		std::thread([this, buffer, w = channel->window.width, h = channel->window.height]() {
+			this->create_window(buffer, w, h);
+		}).detach();
+		while(true) {
+			read_frame(buffer, qp, frame_region->GetLocalToken(), channel);
+		}
 	}
 }
 
-// 自定义窗口过程，处理缩放
-LRESULT CALLBACK BufferDisplayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-	if (msg == WM_DESTROY)
-	{
-		PostQuitMessage(0);
-		return 0;
-	}
-	return DefWindowProcW(hwnd, msg, wParam, lParam);
-}
-
-void Server::read_frame(char *buffer, IND2QueuePair *qp, UINT32 local_token, Channel *channel)
-{
-	int width = channel->window.width;
-	int height = channel->window.height;
-	uint64_t remote_address = channel->frame_region.address;
-	uint32_t remote_token = channel->frame_region.token;
-	ND2_SGE sge = {0};
-	sge.Buffer = buffer;
-	sge.BufferLength = (ULONG)(width * height * 3);
-	sge.MemoryRegionToken = local_token;
-	LARGE_INTEGER freq, t1, t2;
-	HRESULT hr_write = qp->Read(0, &sge, 1, remote_address, remote_token, 0);
-	if (hr_write != ND_SUCCESS)
-	{
-		printf("qp->Read failed: 0x%08lX\n", hr_write);
-	}
-	wait();
-
-	// 注册窗口类
+void Server::create_window(char *buffer, int width, int height) {
 	WNDCLASSW wc = {0};
-	wc.lpfnWndProc = BufferDisplayWndProc;
 	wc.hInstance = GetModuleHandleW(NULL);
 	wc.lpszClassName = L"BufferDisplayWindow";
 	RegisterClassW(&wc);
@@ -162,7 +139,6 @@ void Server::read_frame(char *buffer, IND2QueuePair *qp, UINT32 local_token, Cha
 	bmi.bmiHeader.biCompression = BI_RGB;
 
 	MSG msg;
-	int win_w = width, win_h = height;
 	while (true)
 	{
 		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
@@ -171,34 +147,46 @@ void Server::read_frame(char *buffer, IND2QueuePair *qp, UINT32 local_token, Cha
 				return;
 			if (msg.message == WM_KEYDOWN && msg.wParam == VK_ESCAPE)
 				return;
-			if (msg.message == WM_SIZE)
-			{
-				win_w = LOWORD(msg.lParam);
-				win_h = HIWORD(msg.lParam);
-			}
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-		// 保持宽高不小于1
-		int draw_w = win_w > 0 ? win_w : 1;
-		int draw_h = win_h > 0 ? win_h : 1;
-		// 拉伸显示
-		StretchDIBits(hdc, 0, 0, draw_w, draw_h, 0, 0, width, height, buffer, &bmi, DIB_RGB_COLORS, SRCCOPY);
+		// 直接以原始大小显示
+		StretchDIBits(hdc, 0, 0, width, height, 0, 0, width, height, buffer, &bmi, DIB_RGB_COLORS, SRCCOPY);
 	}
 	ReleaseDC(hwnd, hdc);
 	DestroyWindow(hwnd);
+}
+
+void Server::read_frame(char *buffer, IND2QueuePair *qp, UINT32 local_token, Channel *channel)
+{
+	int width = channel->window.width;
+	int height = channel->window.height;
+	uint64_t remote_address = channel->frame_region.address;
+	uint32_t remote_token = channel->frame_region.token;
+	ND2_SGE sge = {0};
+	sge.Buffer = buffer;
+	sge.BufferLength = (ULONG)(width * height * 3);
+	sge.MemoryRegionToken = local_token;
+	LARGE_INTEGER freq, t1, t2;
+	HRESULT hr = qp->Read(0, &sge, 1, remote_address, remote_token, 0);
+	if (hr != ND_SUCCESS)
+	{
+		printf("qp->Read failed: 0x%08lX\n", hr);
+	}
+	wait();
+
 }
 
 void Server::wait()
 {
 	for (;;)
 	{
-		ND2_RESULT ndRes;
-		if (cq->GetResults(&ndRes, 1) == 1)
+		ND2_RESULT res;
+		if (cq->GetResults(&res, 1) == 1)
 		{
-			if (ND_SUCCESS != ndRes.Status)
+			if (ND_SUCCESS != res.Status)
 			{
-				printf("cq->GetResults failed: 0x%08lX\n", ndRes.Status);
+				printf("cq->GetResults failed: 0x%08lX\n", res.Status);
 				exit(EXIT_FAILURE);
 			}
 			break;

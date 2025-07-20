@@ -24,6 +24,7 @@ protected:
 public:
     Server(const struct sockaddr_in &v4Src);
     void run();
+    void create_window(char *buffer, int width, int height);
     void read_frame(char *buffer, IND2QueuePair *qp, UINT32 local_token, Channel *channel);
     void wait();
     ~Server()
