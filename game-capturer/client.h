@@ -13,7 +13,7 @@
 #include <dxgi-capturer.h>
 
 #include "window.h"
-#include "remote_frame_region.h"
+#include "channel.h"
 
 class Client
 {
@@ -28,7 +28,7 @@ protected:
 public:
     Client(const struct sockaddr_in &local_addr);
     void run(Window *windows, size_t count, sockaddr_in &remote_addr);
-    void write_frame(char *buffer, size_t buffer_size, IND2QueuePair *qp, IND2MemoryRegion *frame_region, RemoteFrameRegion *remote_frame_region);
+    void save_frame(char *buffer);
     void wait();
     ~Client()
     {

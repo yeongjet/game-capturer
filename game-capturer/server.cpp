@@ -43,21 +43,24 @@ void Server::run()
 		printf("connected\n");
 		ULONG len = 0;
 		connector->GetPrivateData(nullptr, &len);
-		char *window_info = static_cast<char *>(malloc(len));
-		connector->GetPrivateData(window_info, &len);
-		struct Window *window = reinterpret_cast<struct Window *>(window_info);
-		printf("window: id=%d, title=%s, width=%d, height=%d, pixel_count=%zu\n",
-			   window->id,
-			   window->title.c_str(),
-			   window->width,
-			   window->height,
-			   window->pixel_count);
+		char *channel_info = static_cast<char *>(malloc(len));
+		connector->GetPrivateData(channel_info, &len);
+		struct Channel *channel = reinterpret_cast<struct Channel *>(channel_info);
+		// 打印 channel 内容
+		printf("Channel info: frame_region.token=%u, frame_region.address=%llu, window.id=%u, window.width=%u, window.height=%u, window.pixel_count=%zu\n",
+			   channel->frame_region.token,
+			   (unsigned long long)channel->frame_region.address,
+			   channel->window.id,
+			   channel->window.width,
+			   channel->window.height,
+			   channel->window.pixel_count);
+
 		IND2MemoryRegion *frame_region;
 		adapter->CreateMemoryRegion(
 			IID_IND2MemoryRegion,
 			adapter_file,
 			reinterpret_cast<VOID **>(&frame_region));
-		size_t buffer_size = window->pixel_count * 3;
+		size_t buffer_size = channel->window.pixel_count * 3;
 		char *buffer = static_cast<char *>(HeapAlloc(GetProcessHeap(), 0, buffer_size));
 		HRESULT hr2 = frame_region->Register(
 			buffer,
@@ -68,54 +71,71 @@ void Server::run()
 		{
 			hr2 = frame_region->GetOverlappedResult(&overlapped, TRUE);
 		}
-	IND2QueuePair *qp;
-	#undef min
-	DWORD queueDepth = std::min(adapter_info.MaxCompletionQueueDepth, adapter_info.MaxReceiveQueueDepth);
-	adapter->CreateQueuePair(
-		IID_IND2QueuePair,
-		cq,
-		cq,
-		nullptr,
-		queueDepth,
-		queueDepth,
-		1,
-		1,
-		0,
-		reinterpret_cast<VOID **>(&qp));
-		struct RemoteFrameRegion *remote_frame_region;
-		remote_frame_region = reinterpret_cast<struct RemoteFrameRegion *>(buffer);
-		remote_frame_region->address = reinterpret_cast<uint64_t>(buffer);
-		remote_frame_region->token = frame_region->GetRemoteToken();
-		// 打印 remote_frame_region 内容
-		printf("RemoteFrameRegion: address=%llu, token=%u\n",
-			   (unsigned long long)remote_frame_region->address,
-			   remote_frame_region->token);
+		IND2QueuePair *qp;
+		DWORD queueDepth = min(adapter_info.MaxCompletionQueueDepth, adapter_info.MaxReceiveQueueDepth);
+		adapter->CreateQueuePair(
+			IID_IND2QueuePair,
+			cq,
+			cq,
+			nullptr,
+			queueDepth,
+			queueDepth,
+			1,
+			1,
+			0,
+			reinterpret_cast<VOID **>(&qp));
+		// struct RemoteFrameRegion *remote_frame_region;
+		// remote_frame_region = reinterpret_cast<struct RemoteFrameRegion *>(buffer);
+		// remote_frame_region->address = reinterpret_cast<uint64_t>(buffer);
+		// remote_frame_region->token = frame_region->GetRemoteToken();
+		// // 打印 remote_frame_region 内容
+		// printf("RemoteFrameRegion: address=%llu, token=%u\n",
+		// 	   (unsigned long long)remote_frame_region->address,
+		// 	   remote_frame_region->token);
 		HRESULT hr3 = connector->Accept(
 			qp,
 			1,
 			1,
-			remote_frame_region,
-			sizeof(*remote_frame_region),
+			nullptr,
+			0,
 			&overlapped);
 		if (hr3 == ND_PENDING)
 		{
 			hr3 = connector->GetOverlappedResult(&overlapped, TRUE);
 		}
-		read_frame(buffer, window->width, window->height);
+		read_frame(buffer, qp, frame_region->GetLocalToken(), channel);
 	}
 }
 
 // 自定义窗口过程，处理缩放
-LRESULT CALLBACK BufferDisplayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-	if (msg == WM_DESTROY) {
+LRESULT CALLBACK BufferDisplayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	if (msg == WM_DESTROY)
+	{
 		PostQuitMessage(0);
 		return 0;
 	}
 	return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 
-void Server::read_frame(char *buffer, int width, int height)
+void Server::read_frame(char *buffer, IND2QueuePair *qp, UINT32 local_token, Channel *channel)
 {
+	int width = channel->window.width;
+	int height = channel->window.height;
+	uint64_t remote_address = channel->frame_region.address;
+	uint32_t remote_token = channel->frame_region.token;
+	ND2_SGE sge = {0};
+	sge.Buffer = buffer;
+	sge.BufferLength = (ULONG)(width * height * 3);
+	sge.MemoryRegionToken = local_token;
+	LARGE_INTEGER freq, t1, t2;
+	HRESULT hr_write = qp->Read(0, &sge, 1, remote_address, remote_token, 0);
+	if (hr_write != ND_SUCCESS)
+	{
+		printf("qp->Read failed: 0x%08lX\n", hr_write);
+	}
+	wait();
+
 	// 注册窗口类
 	WNDCLASSW wc = {0};
 	wc.lpfnWndProc = BufferDisplayWndProc;
@@ -129,7 +149,7 @@ void Server::read_frame(char *buffer, int width, int height)
 	int win_width = rc.right - rc.left;
 	int win_height = rc.bottom - rc.top;
 	HWND hwnd = CreateWindowExW(0, L"BufferDisplayWindow", L"Frame", WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT, win_width, win_height, NULL, NULL, GetModuleHandleW(NULL), NULL);
+								CW_USEDEFAULT, CW_USEDEFAULT, win_width, win_height, NULL, NULL, GetModuleHandleW(NULL), NULL);
 	ShowWindow(hwnd, SW_SHOW);
 
 	HDC hdc = GetDC(hwnd);
@@ -145,10 +165,14 @@ void Server::read_frame(char *buffer, int width, int height)
 	int win_w = width, win_h = height;
 	while (true)
 	{
-		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-			if (msg.message == WM_QUIT) return;
-			if (msg.message == WM_KEYDOWN && msg.wParam == VK_ESCAPE) return;
-			if (msg.message == WM_SIZE) {
+		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		{
+			if (msg.message == WM_QUIT)
+				return;
+			if (msg.message == WM_KEYDOWN && msg.wParam == VK_ESCAPE)
+				return;
+			if (msg.message == WM_SIZE)
+			{
 				win_w = LOWORD(msg.lParam);
 				win_h = HIWORD(msg.lParam);
 			}
@@ -163,4 +187,21 @@ void Server::read_frame(char *buffer, int width, int height)
 	}
 	ReleaseDC(hwnd, hdc);
 	DestroyWindow(hwnd);
+}
+
+void Server::wait()
+{
+	for (;;)
+	{
+		ND2_RESULT ndRes;
+		if (cq->GetResults(&ndRes, 1) == 1)
+		{
+			if (ND_SUCCESS != ndRes.Status)
+			{
+				printf("cq->GetResults failed: 0x%08lX\n", ndRes.Status);
+				exit(EXIT_FAILURE);
+			}
+			break;
+		}
+	};
 }

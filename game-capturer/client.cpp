@@ -68,14 +68,15 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
         {
             hr2 = frame_region->GetOverlappedResult(&overlapped, TRUE);
         }
+        struct Channel channel = {{frame_region->GetRemoteToken(), reinterpret_cast<uint64_t>(buffer)}, window};
         HRESULT hr3 = connector->Connect(
             qp,
             reinterpret_cast<const sockaddr *>(&remote_addr),
             sizeof(remote_addr),
             1,
             1,
-            &window,
-            sizeof(window),
+            &channel,
+            sizeof(channel),
             &overlapped);
         if (hr3 == ND_PENDING)
         {
@@ -87,14 +88,6 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
             exit(EXIT_FAILURE);
         }
         printf("connected\n");
-        ULONG len = 0;
-        connector->GetPrivateData(nullptr, &len);
-        char *frame_region_info = static_cast<char *>(malloc(len));
-        connector->GetPrivateData(frame_region_info, &len);
-        struct RemoteFrameRegion *remote_frame_region = reinterpret_cast<struct RemoteFrameRegion *>(frame_region_info);
-        printf("RemoteRegion info: address=%llu, token=%u\n",
-               (unsigned long long)remote_frame_region->address,
-               remote_frame_region->token);
         HRESULT hr4 = connector->CompleteConnect(&overlapped);
         if (hr4 == ND_PENDING)
         {
@@ -102,12 +95,12 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
         }
         for (;;)
         {
-            write_frame(buffer, buffer_size, qp, frame_region, remote_frame_region);
+            save_frame(buffer);
         }
     }
 }
 
-void Client::write_frame(char *buffer, size_t buffer_size, IND2QueuePair *qp, IND2MemoryRegion *frame_region, RemoteFrameRegion *remote_frame_region)
+void Client::save_frame(char *buffer)
 {
     Microsoft::WRL::ComPtr<ID3D11Texture2D> tex;
     D3D11_TEXTURE2D_DESC desc = {};
@@ -142,37 +135,4 @@ void Client::write_frame(char *buffer, size_t buffer_size, IND2QueuePair *qp, IN
         }
     }
     context->Unmap(tex.Get(), 0);
-    ND2_SGE sge = {0};
-    sge.Buffer = buffer;
-    sge.BufferLength = (ULONG)(width * height * 3);
-    sge.MemoryRegionToken = frame_region->GetLocalToken();
-    LARGE_INTEGER freq, t1, t2;
-    QueryPerformanceFrequency(&freq);
-    QueryPerformanceCounter(&t1);
-    HRESULT hr_write = qp->Write(0, &sge, 1, remote_frame_region->address, remote_frame_region->token, 0);
-    if (hr_write != ND_SUCCESS)
-    {
-        printf("qp->Write failed: 0x%08lX\n", hr_write);
-    }
-    wait();
-    QueryPerformanceCounter(&t2);
-    double elapsed_ms = (double)(t2.QuadPart - t1.QuadPart) * 1000.0 / freq.QuadPart;
-    printf("Write: %.3f ms\n", elapsed_ms);
-}
-
-void Client::wait()
-{
-    for (;;)
-    {
-        ND2_RESULT ndRes;
-        if (cq->GetResults(&ndRes, 1) == 1)
-        {
-            if (ND_SUCCESS != ndRes.Status)
-            {
-                printf("cq->GetResults failed: 0x%08lX\n", ndRes.Status);
-                exit(EXIT_FAILURE);
-            }
-            break;
-        }
-    };
 }
