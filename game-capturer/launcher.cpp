@@ -44,7 +44,6 @@ int main(int argc, TCHAR *argv[])
 				"test window", // title
 				3840,		   // width
 				2160,		   // height
-				3840 * 2160	   // pixel_count
 			}};
 		size_t window_count = 1;
 		Client client(local_addr);
