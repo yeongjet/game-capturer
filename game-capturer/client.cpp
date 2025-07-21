@@ -70,7 +70,6 @@ void Client::run(Window *windows, size_t count, sockaddr_in &remote_addr)
         }
         struct Channel channel = {frame_region->GetRemoteToken(),
                                   reinterpret_cast<uint64_t>(buffer), window};
-        unsigned long long s = sizeof(channel);
         HRESULT hr3 = connector->Connect(
             qp,
             reinterpret_cast<const sockaddr *>(&remote_addr),
