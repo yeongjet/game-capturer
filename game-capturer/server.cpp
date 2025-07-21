@@ -60,7 +60,7 @@ void Server::run()
 			PAGE_READWRITE,
 			0,
 			(DWORD)buffer_size,
-			L"MySharedBuffer");
+			L"game capturer");
 		if (hMapFile == NULL)
 		{
 			printf("CreateFileMapping failed: %lu\n", GetLastError());
@@ -195,7 +195,7 @@ void Server::read_frame(std::shared_ptr<char[]> buffer, IND2QueuePair *qp, UINT3
 	wait();
 	QueryPerformanceCounter(&t2);
 	double ms = (t2.QuadPart - t1.QuadPart) * 1000.0 / freq.QuadPart;
-	printf("read_frame耗时: %.3f ms\n", ms);
+	printf("read_frame elapsed time: %.3f ms\n", ms);
 }
 
 void Server::wait()
